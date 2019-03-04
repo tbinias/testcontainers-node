@@ -11,7 +11,7 @@ describe("GenericContainer", () => {
       .withEnv("customKey", "customValue")
       .withExposedPorts(8080)
       .start();
-    url = `http://localhost:${container.getMappedPort(8080)}`;
+    url = `http://${container.getContainerIpAddress()}:${container.getMappedPort(8080)}`;
   }, 10000);
 
   afterAll(async () => {

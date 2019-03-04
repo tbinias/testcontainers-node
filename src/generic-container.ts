@@ -1,3 +1,4 @@
+import { execSync } from "child_process";
 import { Duration, TemporalUnit } from "node-duration";
 import { BoundPorts } from "./bound-ports";
 import { Container } from "./container";
@@ -16,6 +17,7 @@ export class GenericContainer implements TestContainer {
 
   private env: Env = {};
   private ports: Port[] = [];
+
   private startupTimeout: Duration = new Duration(10_000, TemporalUnit.MILLISECONDS);
 
   constructor(readonly image: Image, readonly tag: Tag = "latest") {
@@ -26,13 +28,17 @@ export class GenericContainer implements TestContainer {
     if (!(await this.hasRepoTagLocally())) {
       await this.dockerClient.pull(this.repoTag);
     }
-
     const boundPorts = await new PortBinder().bind(this.ports);
+
     const container = await this.dockerClient.create(this.repoTag, this.env, boundPorts);
     await this.dockerClient.start(container);
     const inspectResult = await container.inspect();
     const containerState = new ContainerState(inspectResult);
-    await this.waitForContainer(container, containerState);
+
+    const runningInDocker = execSync("cat /proc/1/cgroup | grep docker | wc -l").toString().trim() !== "0";
+    const containerIp = runningInDocker ?
+      execSync("ip -4 route list match 0/0 | awk '{print $3}'").toString("UTF-8").trim() : "127.0.0.1";
+    await this.waitForContainer(container, containerState, containerIp);
 
     return new StartedGenericContainer(container, boundPorts);
   }
@@ -57,16 +63,16 @@ export class GenericContainer implements TestContainer {
     return repoTags.some(repoTag => repoTag.equals(this.repoTag));
   }
 
-  private async waitForContainer(container: Container, containerState: ContainerState): Promise<void> {
-    const hostPortCheck = new HostPortCheck();
+  private async waitForContainer(container: Container, containerState: ContainerState, containerIp: string): Promise<void> {
+    const hostPortCheck = new HostPortCheck(containerIp);
     const internalPortCheck = new InternalPortCheck(container, this.dockerClient);
     const waitStrategy = new HostPortWaitStrategy(this.dockerClient, hostPortCheck, internalPortCheck);
-    await waitStrategy.waitUntilReady(containerState);
+    await waitStrategy.withStartupTimeout(this.startupTimeout).waitUntilReady(containerState);
   }
 }
 
 class StartedGenericContainer implements StartedTestContainer {
-  constructor(private readonly container: Container, private readonly boundPorts: BoundPorts) {}
+  constructor(private readonly container: Container, private readonly boundPorts: BoundPorts) { }
 
   public async stop(): Promise<StoppedTestContainer> {
     await this.container.stop();
@@ -77,6 +83,13 @@ class StartedGenericContainer implements StartedTestContainer {
   public getMappedPort(port: Port): Port {
     return this.boundPorts.getBinding(port);
   }
+
+  public getContainerIpAddress(): string {
+    const runningInDocker = execSync("cat /proc/1/cgroup | grep docker | wc -l").toString().trim() !== "0";
+    const containerIp = runningInDocker ?
+      execSync("ip -4 route list match 0/0 | awk '{print $3}'").toString("UTF-8").trim() : "127.0.0.1";
+    return containerIp;
+  }
 }
 
-class StoppedGenericContainer implements StoppedTestContainer {}
+class StoppedGenericContainer implements StoppedTestContainer { }

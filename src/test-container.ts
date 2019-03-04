@@ -12,6 +12,7 @@ export interface TestContainer {
 export interface StartedTestContainer {
   stop(): Promise<StoppedTestContainer>;
   getMappedPort(port: Port): Port;
+  getContainerIpAddress(): string;
 }
 
-export interface StoppedTestContainer {}
+export interface StoppedTestContainer { }
