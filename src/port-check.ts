@@ -9,11 +9,7 @@ export interface PortCheck {
 
 export class HostPortCheck implements PortCheck {
 
-  private containerIp: string;
-
-  constructor(containerIp: string) {
-    this.containerIp = containerIp;
-  }
+  constructor(private readonly dockerClient: DockerClient) { }
 
   public async isBound(port: Port): Promise<boolean> {
     return new Promise(resolve => {
@@ -30,7 +26,7 @@ export class HostPortCheck implements PortCheck {
         })
         .connect(
           port,
-          this.containerIp,
+          this.dockerClient.getDockerHostIpAddress(),
           () => {
             socket.end();
             resolve(true);

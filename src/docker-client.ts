@@ -1,3 +1,4 @@
+import { execSync } from "child_process";
 import Dockerode, { PortMap as DockerodePortBindings } from "dockerode";
 import streamToArray from "stream-to-array";
 import { BoundPorts } from "./bound-ports";
@@ -24,10 +25,11 @@ export interface DockerClient {
   start(container: Container): Promise<void>;
   exec(container: Container, command: Command[]): Promise<ExecResult>;
   fetchRepoTags(): Promise<RepoTag[]>;
+  getDockerHostIpAddress(): string;
 }
 
 export class DockerodeClient implements DockerClient {
-  constructor(private readonly dockerode: Dockerode = new Dockerode()) {}
+  constructor(private readonly dockerode: Dockerode = new Dockerode()) { }
 
   public async pull(repoTag: RepoTag): Promise<void> {
     log.info(`Pulling image: ${repoTag}`);
@@ -84,6 +86,19 @@ export class DockerodeClient implements DockerClient {
       });
       return [...repoTags, ...imageRepoTags];
     }, []);
+  }
+
+  public getDockerHostIpAddress() {
+    const runningInDocker =
+      execSync("cat /proc/1/cgroup | grep docker | wc -l")
+        .toString()
+        .trim() !== "0";
+    const hostIp = runningInDocker
+      ? execSync("ip -4 route list match 0/0 | awk '{print $3}'")
+        .toString()
+        .trim()
+      : "127.0.0.1";
+    return hostIp;
   }
 
   private isDanglingImage(image: Dockerode.ImageInfo) {

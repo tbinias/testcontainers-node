@@ -15,4 +15,4 @@ export interface StartedTestContainer {
   getContainerIpAddress(): string;
 }
 
-export interface StoppedTestContainer { }
+export interface StoppedTestContainer {}

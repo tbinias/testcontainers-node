@@ -35,12 +35,9 @@ export class GenericContainer implements TestContainer {
     const inspectResult = await container.inspect();
     const containerState = new ContainerState(inspectResult);
 
-    const runningInDocker = execSync("cat /proc/1/cgroup | grep docker | wc -l").toString().trim() !== "0";
-    const containerIp = runningInDocker ?
-      execSync("ip -4 route list match 0/0 | awk '{print $3}'").toString("UTF-8").trim() : "127.0.0.1";
-    await this.waitForContainer(container, containerState, containerIp);
+    await this.waitForContainer(container, containerState);
 
-    return new StartedGenericContainer(container, boundPorts);
+    return new StartedGenericContainer(container, boundPorts, this.dockerClient);
   }
 
   public withEnv(key: EnvKey, value: EnvValue): TestContainer {
@@ -63,8 +60,11 @@ export class GenericContainer implements TestContainer {
     return repoTags.some(repoTag => repoTag.equals(this.repoTag));
   }
 
-  private async waitForContainer(container: Container, containerState: ContainerState, containerIp: string): Promise<void> {
-    const hostPortCheck = new HostPortCheck(containerIp);
+  private async waitForContainer(
+    container: Container,
+    containerState: ContainerState
+  ): Promise<void> {
+    const hostPortCheck = new HostPortCheck(this.dockerClient);
     const internalPortCheck = new InternalPortCheck(container, this.dockerClient);
     const waitStrategy = new HostPortWaitStrategy(this.dockerClient, hostPortCheck, internalPortCheck);
     await waitStrategy.withStartupTimeout(this.startupTimeout).waitUntilReady(containerState);
@@ -72,7 +72,7 @@ export class GenericContainer implements TestContainer {
 }
 
 class StartedGenericContainer implements StartedTestContainer {
-  constructor(private readonly container: Container, private readonly boundPorts: BoundPorts) { }
+  constructor(private readonly container: Container, private readonly boundPorts: BoundPorts, private readonly dockerClient: DockerClient) { }
 
   public async stop(): Promise<StoppedTestContainer> {
     await this.container.stop();
@@ -85,10 +85,7 @@ class StartedGenericContainer implements StartedTestContainer {
   }
 
   public getContainerIpAddress(): string {
-    const runningInDocker = execSync("cat /proc/1/cgroup | grep docker | wc -l").toString().trim() !== "0";
-    const containerIp = runningInDocker ?
-      execSync("ip -4 route list match 0/0 | awk '{print $3}'").toString("UTF-8").trim() : "127.0.0.1";
-    return containerIp;
+    return this.dockerClient.getDockerHostIpAddress();
   }
 }
 
