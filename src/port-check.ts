@@ -8,8 +8,7 @@ export interface PortCheck {
 }
 
 export class HostPortCheck implements PortCheck {
-
-  constructor(private readonly dockerClient: DockerClient) { }
+  constructor(private readonly dockerClient: DockerClient) {}
 
   public async isBound(port: Port): Promise<boolean> {
     return new Promise(resolve => {
@@ -37,7 +36,7 @@ export class HostPortCheck implements PortCheck {
 }
 
 export class InternalPortCheck implements PortCheck {
-  constructor(private readonly container: Container, private readonly dockerClient: DockerClient) { }
+  constructor(private readonly container: Container, private readonly dockerClient: DockerClient) {}
 
   public async isBound(port: Port): Promise<boolean> {
     const commands = [

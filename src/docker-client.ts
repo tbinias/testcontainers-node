@@ -29,7 +29,7 @@ export interface DockerClient {
 }
 
 export class DockerodeClient implements DockerClient {
-  constructor(private readonly dockerode: Dockerode = new Dockerode()) { }
+  constructor(private readonly dockerode: Dockerode = new Dockerode()) {}
 
   public async pull(repoTag: RepoTag): Promise<void> {
     log.info(`Pulling image: ${repoTag}`);
@@ -95,8 +95,8 @@ export class DockerodeClient implements DockerClient {
         .trim() !== "0";
     const hostIp = runningInDocker
       ? execSync("ip -4 route list match 0/0 | awk '{print $3}'")
-        .toString()
-        .trim()
+          .toString()
+          .trim()
       : "127.0.0.1";
     return hostIp;
   }

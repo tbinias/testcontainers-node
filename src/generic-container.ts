@@ -60,10 +60,7 @@ export class GenericContainer implements TestContainer {
     return repoTags.some(repoTag => repoTag.equals(this.repoTag));
   }
 
-  private async waitForContainer(
-    container: Container,
-    containerState: ContainerState
-  ): Promise<void> {
+  private async waitForContainer(container: Container, containerState: ContainerState): Promise<void> {
     const hostPortCheck = new HostPortCheck(this.dockerClient);
     const internalPortCheck = new InternalPortCheck(container, this.dockerClient);
     const waitStrategy = new HostPortWaitStrategy(this.dockerClient, hostPortCheck, internalPortCheck);
@@ -72,7 +69,11 @@ export class GenericContainer implements TestContainer {
 }
 
 class StartedGenericContainer implements StartedTestContainer {
-  constructor(private readonly container: Container, private readonly boundPorts: BoundPorts, private readonly dockerClient: DockerClient) { }
+  constructor(
+    private readonly container: Container,
+    private readonly boundPorts: BoundPorts,
+    private readonly dockerClient: DockerClient
+  ) {}
 
   public async stop(): Promise<StoppedTestContainer> {
     await this.container.stop();
@@ -89,4 +90,4 @@ class StartedGenericContainer implements StartedTestContainer {
   }
 }
 
-class StoppedGenericContainer implements StoppedTestContainer { }
+class StoppedGenericContainer implements StoppedTestContainer {}
